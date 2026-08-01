@@ -1,0 +1,147 @@
+/* ────────────────────────────────────────────────────────────
+   PDF 조판 스타일 — Paged.js 가 읽어서 페이지를 만든다.
+   <head> 에 <link> 하지 말 것. pdf.js 가 Paged.js 에 전달한다.
+   ──────────────────────────────────────────────────────────── */
+
+@page {
+  size: A4;
+  margin: 22mm 20mm 20mm;
+
+  /* 페이지 번호 — 맨 아래 가운데 */
+  @bottom-center {
+    content: counter(page);
+    font-family: "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    font-size: 9.5pt;
+    color: #666;
+    vertical-align: top;
+    padding-top: 6mm;
+  }
+}
+
+/* 표지에는 번호를 넣지 않는다 */
+@page :first {
+  @bottom-center { content: ""; }
+}
+
+/* ── 페이지 안 본문 ─────────────────────────────────── */
+
+.print-root {
+  font-family: "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  font-size: 10.5pt;
+  line-height: 1.75;
+  color: #16181d;
+  text-align: justify;
+  word-break: keep-all;      /* 한글은 어절 단위로 줄바꿈 */
+  overflow-wrap: break-word;
+}
+
+.print-root p { margin: 0 0 .75em; orphans: 2; widows: 2; }
+
+.print-root h1, .print-root h2, .print-root h3, .print-root h4 {
+  break-after: avoid;
+  page-break-after: avoid;
+  line-height: 1.4;
+  color: #000;
+}
+.print-root h1 { font-size: 17pt; margin: 0 0 .9em; padding-bottom: .35em; border-bottom: 1.5pt solid #333; }
+.print-root h2 { font-size: 13.5pt; margin: 1.6em 0 .5em; }
+.print-root h3 { font-size: 11.5pt; margin: 1.3em 0 .4em; }
+.print-root h4 { font-size: 10.5pt; margin: 1.1em 0 .35em; color: #333; }
+.print-root h1 .anchor, .print-root h2 .anchor,
+.print-root h3 .anchor, .print-root h4 .anchor { display: none; }
+
+.print-root ul, .print-root ol { margin: 0 0 .8em; padding-left: 1.5em; }
+.print-root li { margin: .15em 0; }
+
+.print-root hr { border: none; border-top: .5pt solid #bbb; margin: 1.4em 0; }
+
+.print-root a { color: #16181d; text-decoration: none; border: none; }
+
+.print-root mark { background: #fff2a8; }
+
+.print-root code {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: .88em; background: #f0f1f4; padding: .1em .3em; border-radius: 2pt;
+}
+.print-root pre {
+  background: #f6f7f9; border: .5pt solid #ddd; border-radius: 3pt;
+  padding: 8pt 10pt; font-size: 8.5pt; line-height: 1.5;
+  break-inside: avoid; page-break-inside: avoid; margin: 0 0 1em;
+  white-space: pre-wrap;
+}
+.print-root pre code { background: none; padding: 0; }
+
+.print-root blockquote {
+  margin: 0 0 1em; padding-left: 10pt;
+  border-left: 2pt solid #ccc; color: #444;
+}
+
+/* 표 — 페이지를 넘어갈 때 머리행 반복 */
+.print-root .table-wrap { overflow: visible; margin: 0 0 1.1em; }
+.print-root table { border-collapse: collapse; width: 100%; font-size: 9.5pt; }
+.print-root thead { display: table-header-group; }
+.print-root tr { break-inside: avoid; page-break-inside: avoid; }
+.print-root th, .print-root td { border: .5pt solid #999; padding: 4pt 6pt; text-align: left; vertical-align: top; }
+.print-root th { background: #eef0f4; font-weight: 700; }
+
+/* 그림 — 잘리지 않게 */
+.print-root img {
+  max-width: 100%; max-height: 150mm; height: auto;
+  display: block; margin: .9em auto;
+  break-inside: avoid; page-break-inside: avoid;
+}
+.print-root figure { margin: 1em 0; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+.print-root figcaption { font-size: 9pt; color: #555; margin-top: 3pt; }
+.print-root .embed-missing {
+  display: block; border: .5pt dashed #bbb; padding: 6pt; margin: .8em 0;
+  font-size: 9pt; color: #888; text-align: center;
+}
+
+/* 콜아웃 */
+.print-root .callout {
+  border: .5pt solid #ccc; border-left: 2.5pt solid #666;
+  border-radius: 3pt; padding: 7pt 10pt; margin: 0 0 1em;
+  background: #f7f8fa; break-inside: avoid; page-break-inside: avoid;
+}
+.print-root .callout-title { font-weight: 700; display: flex; gap: 5pt; margin-bottom: 3pt; }
+.print-root details.callout > summary { list-style: none; }
+.print-root .callout-body > *:last-child { margin-bottom: 0; }
+
+/* 수식 */
+.print-root .math-block { margin: 1em 0; text-align: center; break-inside: avoid; }
+.print-root .katex { font-size: 1em; }
+
+/* 프론트매터는 PDF 에 넣지 않는다 */
+.print-root .frontmatter { display: none; }
+
+/* ── 표지 ───────────────────────────────────────────── */
+.print-cover {
+  break-after: page; page-break-after: always;
+  height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center;
+}
+.print-cover .cv-title { font-size: 26pt; font-weight: 800; letter-spacing: -.02em; line-height: 1.35; }
+.print-cover .cv-rule { width: 40mm; border-top: 2pt solid #222; margin: 10mm 0; }
+.print-cover .cv-meta { font-size: 10.5pt; color: #555; line-height: 2; }
+
+/* ── 목차 ───────────────────────────────────────────── */
+.print-toc { break-after: page; page-break-after: always; }
+.print-toc > h1 { font-size: 17pt; margin-bottom: 1.2em; }
+.print-toc ol { list-style: none; padding: 0; margin: 0; counter-reset: toc; }
+.print-toc li { margin: 0; padding: 3.5pt 0; break-inside: avoid; }
+.print-toc a {
+  display: flex; align-items: baseline; gap: 4pt;
+  text-decoration: none; color: #16181d; font-size: 10.5pt;
+}
+.print-toc .toc-num { flex: none; color: #777; min-width: 9mm; }
+.print-toc .toc-text { flex: none; max-width: 78%; }
+.print-toc .toc-dots {
+  flex: 1; border-bottom: .5pt dotted #aaa; margin-bottom: 2pt; min-width: 6mm;
+}
+/* 해당 항목이 실제로 놓인 페이지 번호 — attr(href) 를 읽어야 하므로 <a> 에 붙인다 */
+.print-toc a::after { content: target-counter(attr(href url), page); flex: none; color: #444; }
+
+/* ── 각 문서(단원)는 새 페이지에서 시작 ─────────────── */
+.print-doc { break-before: page; page-break-before: always; }
+.print-doc:first-of-type { break-before: auto; page-break-before: auto; }
+.print-doc > *:first-child { margin-top: 0; }

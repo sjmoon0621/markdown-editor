@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>교재 편집기</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/dialog/dialog.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body data-theme="light">
+
+<!-- ── 로그인 화면 ─────────────────────────────────────── -->
+<div id="login" class="login-screen">
+  <div class="login-box">
+    <h1>교재 편집기</h1>
+    <p class="login-sub">GitHub 계정으로 원고를 편집합니다. 저장소 협업자로 등록된 사람만 편집할 수 있습니다.</p>
+
+    <label class="field">
+      <span>콘텐츠 저장소</span>
+      <input id="repo-input" type="text" placeholder="사용자명/저장소명" autocomplete="off" spellcheck="false">
+    </label>
+
+    <label class="field">
+      <span>브랜치</span>
+      <input id="branch-input" type="text" placeholder="main" autocomplete="off" spellcheck="false">
+    </label>
+
+    <label class="field">
+      <span>GitHub 액세스 토큰</span>
+      <input id="token-input" type="password" placeholder="github_pat_... 또는 ghp_..." autocomplete="off" spellcheck="false">
+    </label>
+
+    <button id="login-btn" class="btn primary wide">접속</button>
+    <div id="login-msg" class="login-msg"></div>
+
+    <details class="help">
+      <summary>토큰은 어떻게 만드나요?</summary>
+      <ol>
+        <li>GitHub → 우측 상단 프로필 → <b>Settings</b></li>
+        <li>맨 아래 <b>Developer settings</b> → <b>Personal access tokens</b> → <b>Fine-grained tokens</b></li>
+        <li><b>Generate new token</b> 클릭</li>
+        <li><b>Repository access</b> → <i>Only select repositories</i> → 콘텐츠 저장소 선택</li>
+        <li><b>Permissions</b> → Repository permissions → <b>Contents</b> 를 <b>Read and write</b> 로 설정</li>
+        <li>만료일(Expiration)은 원하는 기간으로 (최대 1년)</li>
+        <li>생성된 토큰을 복사해 위 칸에 붙여넣기</li>
+      </ol>
+      <p>토큰은 이 브라우저에만 저장되며 서버로 전송되지 않습니다.</p>
+    </details>
+  </div>
+</div>
+
+<!-- ── 메인 화면 ───────────────────────────────────────── -->
+<div id="main" class="app hidden">
+
+  <!-- 사이드바 -->
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-head">
+      <div class="repo-name" id="repo-label"></div>
+      <button id="refresh-btn" class="icon-btn" title="새로고침">⟳</button>
+    </div>
+
+    <div class="search-wrap">
+      <input id="file-search" type="search" placeholder="파일 검색 / 내용 검색" spellcheck="false">
+    </div>
+
+    <div id="file-tree" class="file-tree"></div>
+
+    <div class="sidebar-foot">
+      <div class="user-chip">
+        <img id="user-avatar" alt="" width="22" height="22">
+        <span id="user-name"></span>
+        <span id="perm-badge" class="badge"></span>
+      </div>
+      <div class="foot-actions">
+        <button id="new-file-btn" class="icon-btn" title="새 문서">＋</button>
+        <button id="theme-btn" class="icon-btn" title="테마 전환">◐</button>
+        <button id="logout-btn" class="icon-btn" title="로그아웃">⏻</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 에디터 영역 -->
+  <main class="workspace">
+    <header class="toolbar">
+      <button id="sidebar-toggle" class="icon-btn" title="사이드바">☰</button>
+      <div class="crumb" id="crumb">문서를 선택하세요</div>
+      <div class="status" id="status"></div>
+      <div class="toolbar-right">
+        <button id="view-split" class="seg active" title="분할 보기">분할</button>
+        <button id="view-edit" class="seg" title="편집만">편집</button>
+        <button id="view-read" class="seg" title="읽기만">읽기</button>
+        <button id="history-btn" class="btn ghost" title="변경 이력">이력</button>
+        <button id="pdf-btn" class="btn ghost" title="PDF로 내보내기">PDF</button>
+        <button id="save-btn" class="btn primary" disabled>저장</button>
+      </div>
+    </header>
+
+    <div class="panes" id="panes">
+      <section class="pane pane-edit" id="pane-edit">
+        <textarea id="editor"></textarea>
+      </section>
+      <div class="splitter" id="splitter"></div>
+      <section class="pane pane-preview" id="pane-preview">
+        <article id="preview" class="markdown-body"></article>
+      </section>
+    </div>
+
+    <div id="drop-overlay" class="drop-overlay hidden">
+      <div>이미지를 놓으면 업로드됩니다</div>
+    </div>
+  </main>
+</div>
+
+<!-- PDF 미리보기 / 인쇄 -->
+<div id="pdf-overlay" class="pdf-overlay hidden">
+  <header class="pdf-bar">
+    <strong>PDF 미리보기</strong>
+    <span id="pdf-info" class="pdf-info"></span>
+    <span id="pdf-progress" class="pdf-progress"></span>
+    <span class="pdf-hint">인쇄창 설정 —
+      대상 <b>PDF로 저장</b> · 용지 <b>A4</b> · 여백 <b>없음</b> ·
+      배경 그래픽 <b>켜기</b> · 머리글·바닥글 <b>끄기</b></span>
+    <button id="pdf-print" class="btn primary">PDF로 저장</button>
+    <button id="pdf-close" class="btn ghost">닫기</button>
+  </header>
+  <div id="pdf-pages" class="pdf-pages"></div>
+</div>
+
+<!-- 모달 -->
+<div id="modal" class="modal hidden">
+  <div class="modal-box">
+    <h3 id="modal-title"></h3>
+    <div id="modal-body"></div>
+    <div id="modal-actions" class="modal-actions"></div>
+  </div>
+</div>
+
+<div id="toast-wrap" class="toast-wrap"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/markdown/markdown.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/xml/xml.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/edit/continuelist.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/display/placeholder.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/dialog/dialog.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/search/searchcursor.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/addon/search/search.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+
+<script src="js/config.js"></script>
+<script src="js/github.js"></script>
+<script src="js/markdown.js"></script>
+<script src="js/pdf.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
