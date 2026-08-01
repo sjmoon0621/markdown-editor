@@ -11,6 +11,7 @@ const S = {
   canWrite: false,
   tree: [],            // 저장소 전체 파일
   mdFiles: [],         // 마크다운만
+  imgFiles: [],        // 이미지만
   attach: new Map(),   // 소문자 파일명 → 경로 (이미지 해석용)
   byPath: new Map(),   // 경로 → {sha,size}
   current: null,       // {path, sha, text}
@@ -202,16 +203,17 @@ async function loadTree() {
     .sort((a, b) => a.path.localeCompare(b.path, 'ko'));
 
   S.attach.clear();
-  S.tree.forEach(f => {
-    if (CONFIG.IMG_EXT.some(e => f.path.toLowerCase().endsWith(e))) {
-      const k = nfc(baseName(f.path)).toLowerCase();
-      if (!S.attach.has(k)) S.attach.set(k, f.path);
-    }
+  S.imgFiles = S.tree
+    .filter(f => CONFIG.IMG_EXT.some(e => f.path.toLowerCase().endsWith(e)))
+    .sort((a, b) => a.path.localeCompare(b.path, 'ko'));
+  S.imgFiles.forEach(f => {
+    const k = nfc(baseName(f.path)).toLowerCase();
+    if (!S.attach.has(k)) S.attach.set(k, f.path);
   });
 
   S.index = null;   // 검색 캐시 무효화
   renderTree();
-  setStatus(`문서 ${S.mdFiles.length}개 · 이미지 ${S.attach.size}개`);
+  setStatus(`문서 ${S.mdFiles.length}개 · 이미지 ${S.imgFiles.length}개`);
 }
 
 function renderTree(filterFn = null, hits = null) {
@@ -219,9 +221,10 @@ function renderTree(filterFn = null, hits = null) {
   box.innerHTML = '';
 
   const list = filterFn ? S.mdFiles.filter(f => filterFn(f)) : S.mdFiles;
+  const imgs = filterFn ? S.imgFiles.filter(f => filterFn(f)) : S.imgFiles;
 
-  if (!list.length) {
-    box.innerHTML = '<div class="tree-empty">일치하는 문서가 없습니다</div>';
+  if (!list.length && !imgs.length) {
+    box.innerHTML = '<div class="tree-empty">일치하는 파일이 없습니다</div>';
     return;
   }
 
@@ -267,6 +270,163 @@ function renderTree(filterFn = null, hits = null) {
     }
     box.appendChild(g);
   }
+
+  renderImageSection(box, imgs, filterFn);
+}
+
+/* ── 이미지 목록 ────────────────────────────────────── */
+
+/** 이미지 섹션. 항목을 누르면 커서 위치에 ![[파일명]] 이 들어간다. */
+function renderImageSection(box, imgs, filterFn) {
+  if (!imgs.length) return;
+
+  const KEY = '__images__';
+  const open = !S.collapsed.has(KEY);
+
+  const sec = document.createElement('div');
+  sec.className = 'tree-group img-group';
+
+  const head = document.createElement('div');
+  head.className = 'tree-dir img-head';
+  head.innerHTML = `<span class="caret">${open ? '▾' : '▸'}</span>` +
+                   `<span class="dir-name">🖼 이미지</span><span class="dir-count">${imgs.length}</span>`;
+  head.onclick = () => {
+    S.collapsed.has(KEY) ? S.collapsed.delete(KEY) : S.collapsed.add(KEY);
+    renderTree(filterFn, null);
+  };
+  sec.appendChild(head);
+
+  if (open) {
+    // 하위 폴더별로 다시 묶는다
+    const byDir = new Map();
+    imgs.forEach(f => {
+      const d = dirName(f.path) || '(루트)';
+      if (!byDir.has(d)) byDir.set(d, []);
+      byDir.get(d).push(f);
+    });
+
+    for (const [dir, files] of byDir) {
+      if (byDir.size > 1) {
+        const sub = document.createElement('div');
+        sub.className = 'img-subdir';
+        sub.textContent = dir.replace(/^attachments\/?/, '') || 'attachments';
+        sec.appendChild(sub);
+      }
+      files.forEach(f => sec.appendChild(imageItem(f)));
+    }
+  }
+
+  box.appendChild(sec);
+}
+
+function imageItem(f) {
+  const name = baseName(f.path);
+  const item = document.createElement('div');
+  item.className = 'tree-img';
+  item.title = `${f.path}\n클릭하면 문서에 ![[${name}]] 삽입`;
+
+  const thumb = document.createElement('span');
+  thumb.className = 'thumb';
+  const label = document.createElement('span');
+  label.className = 'iname';
+  label.textContent = name;
+  item.append(thumb, label);
+
+  item.onclick = () => insertEmbed(name);
+  item.oncontextmenu = e => { e.preventDefault(); imageMenu(f, e); };
+
+  imgObserver.observe(item);
+  item._imgPath = f.path;
+  item._thumb = thumb;
+  return item;
+}
+
+/* 보이는 것만 미리보기를 받아온다 (48개를 한꺼번에 받지 않도록) */
+const imgObserver = new IntersectionObserver(entries => {
+  entries.forEach(async en => {
+    if (!en.isIntersecting) return;
+    const el = en.target;
+    imgObserver.unobserve(el);
+    try {
+      const url = await S.gh.getBlobURL(el._imgPath, (S.byPath.get(el._imgPath) || {}).sha);
+      el._thumb.style.backgroundImage = `url("${url}")`;
+      el._thumb.classList.add('loaded');
+    } catch { el._thumb.classList.add('failed'); }
+  });
+}, { root: null, rootMargin: '150px' });
+
+function insertEmbed(name) {
+  if (!S.current) { toast('먼저 문서를 여세요.', 'warn'); return; }
+  if (!S.canWrite) { toast('편집 권한이 없습니다.', 'warn'); return; }
+  S.cm.replaceSelection(`![[${name}]]\n`);
+  S.cm.focus();
+  toast(`![[${name}]] 삽입`, 'ok', 1800);
+}
+
+function imageMenu(f, ev) {
+  const name = baseName(f.path);
+  const menu = document.createElement('div');
+  menu.className = 'ctx-menu';
+  menu.style.left = ev.clientX + 'px';
+  menu.style.top = ev.clientY + 'px';
+
+  const items = [
+    { label: '문서에 삽입', fn: () => insertEmbed(name) },
+    { label: '파일명 복사', fn: () => {
+        navigator.clipboard.writeText(name).then(
+          () => toast('복사했습니다: ' + name, 'ok'),
+          () => toast('복사에 실패했습니다.', 'err'));
+      } },
+    { label: '크게 보기', fn: () => previewImage(f) },
+    { label: '삭제', fn: () => deleteImage(f), need: true, danger: true },
+  ];
+
+  items.forEach(it => {
+    if (it.need && !S.canWrite) return;
+    const b = document.createElement('button');
+    b.textContent = it.label;
+    if (it.danger) b.className = 'danger';
+    b.onclick = () => { menu.remove(); it.fn(); };
+    menu.appendChild(b);
+  });
+
+  document.body.appendChild(menu);
+  const close = () => { menu.remove(); document.removeEventListener('click', close); };
+  setTimeout(() => document.addEventListener('click', close), 0);
+}
+
+async function previewImage(f) {
+  let url;
+  try { url = await S.gh.getBlobURL(f.path, (S.byPath.get(f.path) || {}).sha); }
+  catch (e) { toast('불러오지 못했습니다: ' + e.message, 'err'); return; }
+  const kb = Math.round((S.byPath.get(f.path) || {}).size / 1024) || '?';
+  await modal({
+    title: baseName(f.path),
+    bodyHTML: `<img class="img-preview" src="${url}" alt="">
+               <p class="hint">${f.path} · ${kb} KB</p>`,
+    actions: [
+      { label: '문서에 삽입', value: 'insert', kind: 'primary' },
+      { label: '닫기', value: null },
+    ],
+  }).then(r => { if (r === 'insert') insertEmbed(baseName(f.path)); });
+}
+
+async function deleteImage(f) {
+  const r = await modal({
+    title: '이미지 삭제',
+    bodyHTML: `<p><b>${baseName(f.path)}</b> 를 저장소에서 삭제합니다.</p>
+               <p class="hint">이 이미지를 쓰는 문서가 있으면 "이미지 없음"으로 바뀝니다.
+               저장소 이력에는 남아 복구할 수 있습니다.</p>`,
+    actions: [{ label: '삭제', value: 'ok', kind: 'danger' }, { label: '취소', value: null }],
+  });
+  if (r !== 'ok') return;
+  try {
+    await S.gh.deleteFile(f.path, f.sha, `이미지 삭제: ${baseName(f.path)} (${S.user.login})`);
+    S.gh._blobCache.delete(f.path);
+    await loadTree();
+    schedulePreview();
+    toast('삭제했습니다.', 'ok');
+  } catch (e) { toast('삭제 실패: ' + e.message, 'err', 6000); }
 }
 
 /* ── 검색 ───────────────────────────────────────────── */
@@ -276,8 +436,8 @@ async function onSearch(q) {
   q = q.trim();
   if (!q) { renderTree(); return; }
 
-  const lower = q.toLowerCase();
-  const nameMatch = f => baseName(f.path).toLowerCase().includes(lower);
+  const lower = nfc(q).toLowerCase();
+  const nameMatch = f => nfc(baseName(f.path)).toLowerCase().includes(lower);
 
   // 1차: 파일명
   renderTree(nameMatch);
@@ -290,7 +450,7 @@ async function onSearch(q) {
     await Promise.all(S.mdFiles.map(async f => {
       try { S.index.set(f.path, (await S.gh.getFile(f.path)).text); } catch {}
     }));
-    setStatus(`문서 ${S.mdFiles.length}개 · 이미지 ${S.attach.size}개`);
+    setStatus(`문서 ${S.mdFiles.length}개 · 이미지 ${S.imgFiles.length}개`);
     if ($('#file-search').value.trim() !== q) return;   // 그 사이 입력이 바뀜
   }
 
@@ -304,7 +464,9 @@ async function onSearch(q) {
   });
 
   renderTree(f => nameMatch(f) || hits.has(f.path), hits);
-  setStatus(`검색 결과 ${new Set([...hits.keys(), ...S.mdFiles.filter(nameMatch).map(f => f.path)]).size}건`);
+  const docHits = new Set([...hits.keys(), ...S.mdFiles.filter(nameMatch).map(f => f.path)]).size;
+  const imgHits = S.imgFiles.filter(nameMatch).length;
+  setStatus(`검색 결과 문서 ${docHits}건` + (imgHits ? ` · 이미지 ${imgHits}건` : ''));
 }
 
 /* ── 에디터 ─────────────────────────────────────────── */
@@ -654,6 +816,9 @@ async function uploadImages(files) {
       S.byPath.set(path, { path, sha: res.content.sha, size: file.size });
       S.gh._blobCache.set(path, URL.createObjectURL(file));
 
+      S.imgFiles.push({ path, sha: res.content.sha, size: file.size });
+      S.imgFiles.sort((a, b) => a.path.localeCompare(b.path, 'ko'));
+      renderTree();
       S.cm.replaceSelection(`![[${name}]]\n`);
       setStatus('이미지 업로드 완료', 'ok');
       schedulePreview();
