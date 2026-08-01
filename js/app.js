@@ -58,6 +58,11 @@ function relTime(iso) {
    눈에는 같아 보여도 문자열로는 달라서 정규화하지 않으면 이미지를 못 찾는다. */
 function nfc(s) { return String(s).normalize('NFC'); }
 
+/* 자연 정렬 — 숫자를 자릿수가 아니라 값으로 비교한다.
+   numeric 옵션이 없으면 "10번" 이 "2번" 보다 앞에 온다. */
+const collator = new Intl.Collator('ko', { numeric: true });
+const byNaturalPath = (a, b) => collator.compare(nfc(a.path), nfc(b.path));
+
 function baseName(p) { return p.split('/').pop(); }
 function dirName(p) { const i = p.lastIndexOf('/'); return i < 0 ? '' : p.slice(0, i); }
 function stripExt(p) { return baseName(p).replace(/\.[^.]+$/, ''); }
@@ -200,12 +205,12 @@ async function loadTree() {
   S.byPath = new Map(S.tree.map(f => [f.path, f]));
   S.mdFiles = S.tree
     .filter(f => CONFIG.MD_EXT.some(e => f.path.toLowerCase().endsWith(e)))
-    .sort((a, b) => a.path.localeCompare(b.path, 'ko'));
+    .sort(byNaturalPath);
 
   S.attach.clear();
   S.imgFiles = S.tree
     .filter(f => CONFIG.IMG_EXT.some(e => f.path.toLowerCase().endsWith(e)))
-    .sort((a, b) => a.path.localeCompare(b.path, 'ko'));
+    .sort(byNaturalPath);
   S.imgFiles.forEach(f => {
     const k = nfc(baseName(f.path)).toLowerCase();
     if (!S.attach.has(k)) S.attach.set(k, f.path);
@@ -817,7 +822,7 @@ async function uploadImages(files) {
       S.gh._blobCache.set(path, URL.createObjectURL(file));
 
       S.imgFiles.push({ path, sha: res.content.sha, size: file.size });
-      S.imgFiles.sort((a, b) => a.path.localeCompare(b.path, 'ko'));
+      S.imgFiles.sort(byNaturalPath);
       renderTree();
       S.cm.replaceSelection(`![[${name}]]\n`);
       setStatus('이미지 업로드 완료', 'ok');
