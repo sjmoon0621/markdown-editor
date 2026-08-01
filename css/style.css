@@ -226,10 +226,12 @@ body.dragging { user-select: none; cursor: col-resize; }
 /* 한글 원고 가독성을 위해 편집창도 비례 글꼴 (옵시디언 기본과 동일) */
 .CodeMirror {
   height: 100%; font-family: var(--sans); font-size: 15px; line-height: 1.85;
-  background: var(--bg); color: var(--text); padding: 20px 22px 40vh;
+  background: var(--bg); color: var(--text);
 }
+/* 여백은 반드시 안쪽(.CodeMirror-lines)에 줄 것.
+   .CodeMirror 에 padding 을 주면 스크롤 영역 높이가 그만큼 깎여 편집창이 잘린다. */
+.CodeMirror-lines { max-width: 780px; padding: 20px 22px 40vh; }
 .cm-s-default .cm-comment, .CodeMirror pre.CodeMirror-line .cm-comment { font-family: var(--mono); font-size: .92em; }
-.CodeMirror-lines { max-width: 780px; }
 .CodeMirror-cursor { border-left: 2px solid var(--accent); }
 .CodeMirror-selected { background: color-mix(in srgb, var(--accent) 22%, transparent) !important; }
 .CodeMirror-placeholder { color: var(--text-3) !important; }
