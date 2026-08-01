@@ -24,12 +24,18 @@ const PDF = (() => {
     if (el) el.textContent = text;
   }
 
-  /* 문서 하나를 <section class="print-doc"> 으로 */
+  /* 문서 하나를 <section class="print-doc"> 으로.
+     print-root 를 최상위 div 가 아니라 각 섹션에 직접 붙이는 이유:
+     Paged.js 는 페이지를 나눌 때 최상위 래퍼를 '클래스 없는 div' 로 복제하므로
+     바깥 div 에만 print-root 를 두면 인쇄 스타일이 본문에 하나도 적용되지 않는다. */
   function buildDoc(text, path, i) {
     const sec = document.createElement('section');
-    sec.className = 'print-doc';
+    sec.className = 'print-doc print-root';
     sec.id = `pdoc-${i}`;
     sec.innerHTML = MD.render(text);
+
+    // 화면용 제목 앵커(#)는 PDF 에 필요 없다
+    sec.querySelectorAll('a.anchor').forEach(a => a.remove());
 
     // 문서마다 id 가 겹치므로 접두어를 붙인다
     sec.querySelectorAll('[id]').forEach(el => { el.id = `d${i}-${el.id}`; });
@@ -71,7 +77,7 @@ const PDF = (() => {
     /* 2. 표지 */
     if (opts.cover) {
       const cover = document.createElement('section');
-      cover.className = 'print-cover';
+      cover.className = 'print-cover print-root';
       const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
       cover.innerHTML =
         `<div class="cv-title">${escHTML(opts.title)}</div>
@@ -83,7 +89,7 @@ const PDF = (() => {
     /* 3. 목차 */
     if (opts.toc && docs.length > 1) {
       const toc = document.createElement('nav');
-      toc.className = 'print-toc';
+      toc.className = 'print-toc print-root';
       const items = docs.map((d, i) =>
         `<li><a href="#pdoc-${i}">` +
         `<span class="toc-num">${i + 1}</span>` +
