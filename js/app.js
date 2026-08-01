@@ -52,6 +52,11 @@ function relTime(iso) {
   return new Date(iso).toLocaleDateString('ko-KR');
 }
 
+/* 한글 파일명 정규화.
+   macOS 는 파일명을 NFD(자모 분리)로 다루는데 원고의 ![[...]] 는 보통 NFC(조합형)이다.
+   눈에는 같아 보여도 문자열로는 달라서 정규화하지 않으면 이미지를 못 찾는다. */
+function nfc(s) { return String(s).normalize('NFC'); }
+
 function baseName(p) { return p.split('/').pop(); }
 function dirName(p) { const i = p.lastIndexOf('/'); return i < 0 ? '' : p.slice(0, i); }
 function stripExt(p) { return baseName(p).replace(/\.[^.]+$/, ''); }
@@ -199,7 +204,7 @@ async function loadTree() {
   S.attach.clear();
   S.tree.forEach(f => {
     if (CONFIG.IMG_EXT.some(e => f.path.toLowerCase().endsWith(e))) {
-      const k = baseName(f.path).toLowerCase();
+      const k = nfc(baseName(f.path)).toLowerCase();
       if (!S.attach.has(k)) S.attach.set(k, f.path);
     }
   });
@@ -577,13 +582,15 @@ async function renderPreview() {
 
 /* ![[이름]] → 저장소 경로 → blob URL */
 async function resolveImage(name) {
+  name = nfc(name);
   let path = null;
   if (S.byPath.has(name)) path = name;
   if (!path && S.current) {
     const rel = (dirName(S.current.path) ? dirName(S.current.path) + '/' : '') + name;
     if (S.byPath.has(rel)) path = rel;
   }
-  if (!path) path = S.attach.get(baseName(name).toLowerCase()) || null;
+  // 파일명만으로 저장소 전체에서 찾기 (하위 폴더에 있어도 됨) — 옵시디언과 같은 방식
+  if (!path) path = S.attach.get(nfc(baseName(name)).toLowerCase()) || null;
   if (!path) return null;
   return S.gh.getBlobURL(path, (S.byPath.get(path) || {}).sha);
 }
@@ -626,12 +633,13 @@ async function uploadImages(files) {
 
   for (const file of files) {
     const ext = (file.name.match(/\.[a-z0-9]+$/i) || ['.png'])[0].toLowerCase();
+    // Finder 에서 끌어다 놓으면 파일명이 NFD 로 들어오므로 NFC 로 맞춘다
     let name = file.name && !/^image\.\w+$/i.test(file.name)
-      ? file.name.replace(/[/\\?%*:|"<>]/g, '-')
+      ? nfc(file.name).replace(/[/\\?%*:|"<>]/g, '-')
       : `Pasted image ${stamp()}${ext}`;
 
     // 이름 충돌 회피
-    while (S.attach.has(name.toLowerCase())) {
+    while (S.attach.has(nfc(name).toLowerCase())) {
       name = name.replace(/(\.\w+)$/, `_${Math.random().toString(36).slice(2, 6)}$1`);
     }
 
@@ -642,7 +650,7 @@ async function uploadImages(files) {
       const bytes = new Uint8Array(await file.arrayBuffer());
       const res = await S.gh.putBinary(path, bytes, `이미지 추가: ${name} (${S.user.login})`);
 
-      S.attach.set(name.toLowerCase(), path);
+      S.attach.set(nfc(name).toLowerCase(), path);
       S.byPath.set(path, { path, sha: res.content.sha, size: file.size });
       S.gh._blobCache.set(path, URL.createObjectURL(file));
 
