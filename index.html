@@ -95,6 +95,7 @@
         <button id="view-edit" class="seg" title="편집만">편집</button>
         <button id="view-read" class="seg" title="읽기만">읽기</button>
         <button id="history-btn" class="btn ghost" title="변경 이력">이력</button>
+        <button id="cmt-btn" class="btn ghost" title="피드백 댓글">댓글</button>
         <button id="pdf-btn" class="btn ghost" title="PDF로 내보내기">PDF</button>
         <button id="save-btn" class="btn primary" disabled>저장</button>
       </div>
@@ -109,6 +110,19 @@
         <article id="preview" class="markdown-body"></article>
       </section>
     </div>
+
+    <aside id="cmt-panel" class="cmt-panel hidden">
+      <header class="cmt-head">
+        <strong>피드백</strong>
+        <button id="cmt-name-btn" class="link-btn" title="댓글에 표시될 이름 바꾸기">
+          <span id="cmt-name"></span> ✎</button>
+        <label class="cmt-toggle"><input type="checkbox" id="cmt-show-resolved"> 해결된 것도</label>
+        <button id="cmt-close" class="icon-btn" title="닫기">✕</button>
+      </header>
+      <div id="cmt-list" class="cmt-list"></div>
+    </aside>
+
+    <button id="cmt-add" class="cmt-add hidden">💬 댓글 달기</button>
 
     <div id="drop-overlay" class="drop-overlay hidden">
       <div>이미지를 놓으면 업로드됩니다</div>
@@ -157,6 +171,7 @@
 <script src="js/config.js"></script>
 <script src="js/github.js"></script>
 <script src="js/markdown.js"></script>
+<script src="js/comments.js"></script>
 <script src="js/pdf.js"></script>
 <script src="js/app.js"></script>
 </body>

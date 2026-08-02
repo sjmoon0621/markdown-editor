@@ -435,6 +435,75 @@ details.callout > summary::-webkit-details-marker { display: none; }
 .ctx-menu button:hover { background: var(--bg-3); }
 .ctx-menu button.danger { color: var(--err); }
 
+/* ── 피드백 댓글 ───────────────────────────────────── */
+.cmt-panel {
+  position: absolute; top: 48px; right: 0; bottom: 0; width: 300px; z-index: 30;
+  display: flex; flex-direction: column;
+  background: var(--bg-2); border-left: 1px solid var(--border);
+  box-shadow: -4px 0 16px rgba(0,0,0,.08);
+}
+.cmt-head {
+  display: flex; align-items: center; gap: 8px; flex: none;
+  padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px;
+}
+.cmt-head strong { flex: none; }
+#cmt-name-btn { flex: 1; text-align: left; font-size: 11.5px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmt-toggle { flex: none; font-size: 11px; color: var(--text-3); display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.cmt-toggle input { accent-color: var(--accent); }
+
+.cmt-list { flex: 1; overflow-y: auto; padding: 10px; }
+.cmt-empty { padding: 24px 12px; font-size: 12.5px; color: var(--text-3); text-align: center; line-height: 1.7; }
+
+.cmt-card {
+  background: var(--bg); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  border-radius: 8px; padding: 10px 12px; margin-bottom: 9px; cursor: pointer;
+  transition: border-color .12s, box-shadow .12s;
+}
+.cmt-card:hover { box-shadow: var(--shadow); }
+.cmt-card.active { border-left-color: var(--warn); box-shadow: var(--shadow); }
+.cmt-card.resolved { opacity: .55; border-left-color: var(--ok); }
+.cmt-card.orphan { border-left-color: var(--err); }
+
+.cmt-quote {
+  font-size: 11.5px; color: var(--text-3); border-left: 2px solid var(--border);
+  padding-left: 7px; margin-bottom: 6px; line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.cmt-orphan-note { font-size: 11px; color: var(--err); margin-bottom: 5px; }
+.cmt-body { font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.cmt-meta { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+.cmt-reply {
+  margin: 8px 0 0 10px; padding-left: 9px; border-left: 2px solid var(--border);
+}
+.cmt-actions { display: flex; gap: 10px; margin-top: 8px; font-size: 11.5px; }
+.cmt-actions .danger { color: var(--err); }
+
+/* 본문 하이라이트 */
+mark.cmt-mark {
+  background: color-mix(in srgb, var(--warn) 28%, transparent);
+  border-bottom: 2px solid var(--warn);
+  border-radius: 2px; padding: 0 1px; cursor: pointer; color: inherit;
+}
+mark.cmt-mark:hover { background: color-mix(in srgb, var(--warn) 45%, transparent); }
+mark.cmt-mark.active { background: color-mix(in srgb, var(--warn) 55%, transparent); }
+mark.cmt-mark.resolved { background: color-mix(in srgb, var(--ok) 18%, transparent); border-bottom-color: var(--ok); }
+
+/* 선택 시 뜨는 버튼 */
+.cmt-add {
+  position: fixed; z-index: 120;
+  background: var(--accent); color: #fff; border: none;
+  padding: 7px 13px; border-radius: 7px; font-size: 12.5px; font-weight: 600;
+  box-shadow: var(--shadow);
+}
+.cmt-add:hover { background: var(--accent-2); }
+
+/* 패널이 열리면 편집 영역을 그만큼 줄인다 */
+.panes.with-cmt { margin-right: 300px; }
+
+@media (max-width: 860px) {
+  .cmt-panel { width: 100%; }
+}
+
 /* ── PDF 미리보기 ──────────────────────────────────── */
 .pdf-overlay {
   position: fixed; inset: 0; z-index: 150;

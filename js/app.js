@@ -581,6 +581,7 @@ async function openFile(path, force = false) {
     localStorage.setItem(LS.last, path);
 
     renderTree();
+    await CMT.load(path);
     renderPreview();
     updateSaveState();
     setStatus('');
@@ -745,6 +746,7 @@ async function renderPreview() {
   });
 
   await MD.resolveEmbeds(el, resolveImage);
+  CMT.applyToPreview();
 }
 
 /* ![[이름]] → 저장소 경로 → blob URL */
@@ -1025,6 +1027,7 @@ function bindUI() {
   $('#save-btn').onclick = () => save();
   $('#history-btn').onclick = showHistory;
   PDF.bind();
+  CMT.bind();
   $('#sidebar-toggle').onclick = () => $('#sidebar').classList.toggle('hidden-side');
 
   $('#view-split').onclick = () => setViewMode('split');
